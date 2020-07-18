@@ -59,9 +59,9 @@ public:
 	}
 
 private:
-	static uint32 ItemIndex;
+
 };
-uint32 FInventoryItemInfo::ItemIndex = 0;
+
 
 /**
  *
@@ -76,4 +76,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInventory")
 		static bool ReadConfig(const FString JsonConfigPath, UDataTable* DataTable);
 
+private:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CB_KnapsackItemInventory", meta = (AllowPrivateAccess = "true"))
+		UDataTable* DataTable;
 };

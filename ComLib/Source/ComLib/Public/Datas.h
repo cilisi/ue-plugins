@@ -15,6 +15,9 @@ class COMLIB_API UDatas : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 
 public:
+	UFUNCTION(BlueprintCallable, Category = "CB_Datas")
+		static void HandleDataTableRowNameForNumberate(UDataTable* DataTable, const FString& Prefix = "");
+	
 	/**
 	* Empty and fill a Data Table from CSV string.
 	* @param	CSVString	The Data that representing the contents of a CSV file.
@@ -46,7 +49,7 @@ public:
 		*/
 	UFUNCTION(BlueprintCallable, DisplayName = "Fill Data Table from JSON File", Category = "CB_Datas")
 		static bool FillDataTableFromJSONFile(UDataTable* DataTable, const FString& JSONFilePath);
-	
+
 	UFUNCTION(BlueprintCallable, Category = "CB_Datas")
 		/** Read JSON string to DataTable **/
 		static UDataTable* ParseJsonToDataTable(const FString& InData, UScriptStruct* TableType);

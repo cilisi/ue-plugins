@@ -26,6 +26,7 @@ public class ComLib : ModuleRules
                 "InputCore",
                 "CoreUObject",
                 "Engine",
+                "UnrealEd",
                 "HeadMountedDisplay",
                 "Slate",
                 "SlateCore",

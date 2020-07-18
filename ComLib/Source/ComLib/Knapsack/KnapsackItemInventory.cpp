@@ -4,8 +4,7 @@
 
 FInventoryItemInfo::FInventoryItemInfo()
 {
-	ItemIndex++;
-	ItemID = FName("ItemID", ItemIndex);
+	ItemID = FName("ItemID");
 	Name = FName("Item");
 	Action = FText::FromString("The Item Action Text");
 	Description = FText::FromString("The Item Description Text");
@@ -18,7 +17,11 @@ bool UKnapsackItemInventory::ReadConfig(const FString JsonConfigPath, UDataTable
 {
 	FString JsonConfig;
 	if (JsonConfigPath.Len() != 0) {
-		return UDatas::FillDataTableFromJSONFile(DataTable, JsonConfigPath);
+		bool b = UDatas::FillDataTableFromJSONFile(DataTable, JsonConfigPath);
+		if (b)
+		{
+			UDatas::HandleDataTableRowNameForNumberate(DataTable);
+		}
 	}
 	return false;
 }

@@ -1,20 +1,29 @@
 #include "Datas.h"
 #include "Resources.h"
 #include "Asserts.h"
-#include "JsonObjectConverter.h"
-#include "Misc/FileHelper.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
+#include "Engine/DataTable.h"
+#include "Engine/UserDefinedStruct.h"
 #include "UObject/UnrealType.h"
 #include "UObject/EnumProperty.h"
 #include "DataTableUtils.h"
-#include "Engine/DataTable.h"
+#include "DataTableEditorUtils.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
-#include "HAL/PlatformFilemanager.h"
 #include "Misc/FileHelper.h"
-#include "DataTableUtils.h"
-#include "Engine/UserDefinedStruct.h"
+#include "JsonObjectConverter.h"
+#include "HAL/PlatformFilemanager.h"
+
+void UDatas::HandleDataTableRowNameForNumberate(UDataTable* DataTable, const FString& Prefix)
+{
+	TArray<FName> RowNames = DataTable->GetRowNames();
+	for (int32 i = 0; i < RowNames.Num(); i++)
+	{
+		FString newName = CB_FS_CONCAT(Prefix, i);
+		FDataTableEditorUtils::RenameRow(DataTable, RowNames[i], FName(*newName));
+	}
+}
 
 bool UDatas::FillDataTableFromCSVString(UDataTable* DataTable, const FString& CSVString)
 {
