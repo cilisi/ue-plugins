@@ -11,7 +11,66 @@
 #include "Engine/DataTable.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
+#include "HAL/PlatformFilemanager.h"
+#include "Misc/FileHelper.h"
+#include "DataTableUtils.h"
 #include "Engine/UserDefinedStruct.h"
+
+bool UDatas::FillDataTableFromCSVString(UDataTable* DataTable, const FString& CSVString)
+{
+	if (!DataTable || (CSVString.Len() == 0))
+	{
+		return false;
+	}
+	// Call bulit-in function
+	TArray<FString> Errors = DataTable->CreateTableFromCSVString(CSVString);
+
+	if (Errors.Num())
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool UDatas::FillDataTableFromCSVFile(UDataTable* DataTable, const FString& CSVFilePath)
+{
+	FString CSVString;
+	if (FPlatformFileManager::Get().GetPlatformFile().FileExists(*CSVFilePath))
+	{
+		FFileHelper::LoadFileToString(CSVString, *CSVFilePath);
+		return UDatas::FillDataTableFromCSVString(DataTable, CSVString);
+	}
+	return false;
+}
+
+bool UDatas::FillDataTableFromJSONString(UDataTable* DataTable, const FString& JSONString)
+{
+	if (!DataTable || (JSONString.Len() == 0))
+	{
+		return false;
+	}
+	// Call bulit-in function
+	TArray<FString> Errors = DataTable->CreateTableFromJSONString(JSONString);
+
+	if (Errors.Num())
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool UDatas::FillDataTableFromJSONFile(UDataTable* DataTable, const FString& JSONFilePath)
+{
+	FString JSONString;
+	if (FPlatformFileManager::Get().GetPlatformFile().FileExists(*JSONFilePath))
+	{
+		FFileHelper::LoadFileToString(JSONString, *JSONFilePath);
+		return UDatas::FillDataTableFromJSONString(DataTable, JSONString);
+	}
+	return false;
+}
 
 UDataTable* UDatas::ParseJsonToDataTable(const FString& JsonData, UScriptStruct* TableType)
 {
