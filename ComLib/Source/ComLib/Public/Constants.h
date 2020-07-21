@@ -11,13 +11,13 @@
 #define CB_CUR_CLASS_FUNC (FString(__FUNCTION__))
 #define CB_CUR_LINE (FString::FromInt(__LINE__))
 
-#define CB_PF_LOG_DIS(LogCat, FormatString, ...)                                                         \
+#define CB_PF_LOG_DEBUG(LogCat, FormatString, ...)                                                         \
 	UE_LOG(LogCat, Display, TEXT("%s(%s): %s"), *CB_CUR_CLASS_FUNC, *CB_CUR_LINE, *FString::Printf(TEXT(FormatString), ##__VA_ARGS__))
 
-#define CB_PF_LOG_WARN(LogCat, FormatString, ...)                                                        \
+#define CB_PF_LOG_WARNING(LogCat, FormatString, ...)                                                        \
 	UE_LOG(LogCat, Warning, TEXT("%s(%s): %s"), *CB_CUR_CLASS_FUNC, *CB_CUR_LINE, *FString::Printf(TEXT(FormatString), ##__VA_ARGS__))
 
-#define CB_PF_LOG_ERR(LogCat, FormatString, ...)                                                         \
+#define CB_PF_LOG_ERROR(LogCat, FormatString, ...)                                                         \
 	UE_LOG(LogCat, Error, TEXT("%s(%s): %s"), *CB_CUR_CLASS_FUNC, *CB_CUR_LINE, *FString::Printf(TEXT(FormatString), ##__VA_ARGS__))
 
 #define CB_PF_LOG_VERB(LogCat, FormatString, ...)                                                        \
