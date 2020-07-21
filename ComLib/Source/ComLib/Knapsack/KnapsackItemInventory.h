@@ -4,7 +4,12 @@
 #include "UObject/NoExportTypes.h"
 #include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "KnapsackItemInventory.generated.h"
+
+////////////////////////////////////////////////////////////////////////////////////////////
+//The Inventory Item Information Configuration
+////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * The Inventory Compound Info of Item
@@ -16,7 +21,6 @@ struct FInventoryItemCompoundInfo :public FTableRowBase
 
 public:
 
-
 	FInventoryItemCompoundInfo();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
@@ -26,6 +30,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0", UIMin = "0"))
 		/*The amount of needed item*/
 		int32 Amount;
+
+	FInventoryItemCompoundInfo& operator=(const FInventoryItemCompoundInfo& Other)
+	{
+		Id = Other.Id;
+		Amount = Other.Amount;
+		return *this;
+	}
 
 	FORCEINLINE friend bool operator==(const FInventoryItemCompoundInfo& L, const FInventoryItemCompoundInfo& R)
 	{
@@ -39,7 +50,6 @@ public:
 	}
 };
 
-/** Case insensitive string hash function. */
 FORCEINLINE uint32 GetTypeHash(const FInventoryItemCompoundInfo& InventoryItemCompoundInfo)
 {
 	return GetTypeHash(InventoryItemCompoundInfo.Id);
@@ -114,6 +124,24 @@ public:
 		return L.Id == R.Id;
 	}
 
+	FInventoryItemInfo& operator=(const FInventoryItemInfo& Other)
+	{
+		bCanUsed = Other.bCanUsed;
+		Id = Other.Id;
+		Name = Other.Name;
+		Category = Other.Category;
+		Action = Other.Action;
+		Description = Other.Description;
+		Thumbnail = Other.Thumbnail;
+		Weight = Other.Weight;
+		MaxAmount = Other.MaxAmount;
+		bCanCompound = Other.bCanCompound;
+		CompoundInfos = Other.CompoundInfos;
+		bCanMerged = Other.bCanMerged;
+		MergedInfo = Other.MergedInfo;
+		return *this;
+	}
+
 	/*Whether the inventory item info and Item ID is equal for find it*/
 	bool operator==(const FName& OtherId)const
 	{
@@ -124,37 +152,66 @@ private:
 
 };
 
-/** Case insensitive string hash function. */
 FORCEINLINE uint32 GetTypeHash(const FInventoryItemInfo& InventoryItemInfo)
 {
 	return GetTypeHash(InventoryItemInfo.Id);
 }
 
-USTRUCT(BlueprintType)
+////////////////////////////////////////////////////////////////////////////////////////////
+//END The Inventory Item Information Configuration
+////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////////////////
+//The Knapsack Item Information
+////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * The Knapsack Item Info Initialtion Opetion
+ */
+enum EKnapsackItemInfoInitialtion {
+	ZERO,
+	ONE,
+	FULL
+};
+
+/**
+ * The Knapsack Item Info
+ */
 struct FKnapsackItemInfo {
 
-	GENERATED_BODY()
-
-public:
 	FKnapsackItemInfo(FName Id);
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInfo")
-		bool IncrementAmount();
+	FKnapsackItemInfo(FName Id, EKnapsackItemInfoInitialtion KnapsackItemInfoInit);
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInfo")
-		bool DecrementAmount();
+	bool IncrementAmount();
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInfo")
-		bool ChangeAmount(int32 Amount);
+	bool DecrementAmount();
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInfo")
-		void clear();
+	int32 IncreaseAmount(int32 Amount);
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInfo")
-		void fill();
+	int32 DecreaseAmount(int32 Amount);
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInfo")
-		FInventoryItemInfo* Info();
+	int32 ChangeAmount(int32 Amount);
+
+	void clear();
+
+	void fill();
+
+	FInventoryItemInfo* Info();
+
+	int32 GetTotalAmount();
+
+	int32 GetTotalWeight();
+
+	FKnapsackItemInfo& operator=(const FKnapsackItemInfo* Other)
+	{
+		Id = Other->Id;
+		InventoryItemInfo = Other->InventoryItemInfo;
+		Amount = Other->Amount;
+		TotalWeight = Other->TotalWeight;
+		return *this;
+	}
 
 	FORCEINLINE friend bool operator==(const FKnapsackItemInfo& L, const FKnapsackItemInfo& R)
 	{
@@ -179,12 +236,14 @@ private:
 	float TotalWeight;
 };
 
-/** Case insensitive string hash function. */
 FORCEINLINE uint32 GetTypeHash(const FKnapsackItemInfo& KnapsackItemInfo)
 {
 	return GetTypeHash(KnapsackItemInfo.Id);
 }
 
+/**
+ * The Knapsack Item Info KeyFuncs
+ */
 struct TKnapsackItemInfoKeyFuncs :BaseKeyFuncs<FKnapsackItemInfo, FName> {
 	//Init KnapsackItemInfo Key Funcs
 	typedef BaseKeyFuncs<FKnapsackItemInfo, FName> Super;
@@ -207,48 +266,77 @@ struct TKnapsackItemInfoKeyFuncs :BaseKeyFuncs<FKnapsackItemInfo, FName> {
 /**
  * The Knapsack Info
  */
-USTRUCT(BlueprintType)
-struct FKnapsackInfo {
-
+UCLASS(BlueprintType)
+class COMLIB_API UKnapsackInfo : public UObject
+{
 	GENERATED_BODY()
 
 public:
 
-	FKnapsackInfo();
+	UKnapsackInfo();
 
-	TSet<FKnapsackItemInfo, TKnapsackItemInfoKeyFuncs> KnapsackItemInfoSet;
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+		TArray<FName> Ids();
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
 		TArray<FInventoryItemInfo> Infos();
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+		FInventoryItemInfo Info(FName Id);
+
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+		bool Amount(FName Id, int32& Result);
+
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+		bool Weight(FName Id, float& Result);
+
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+		float TotalWeigth(FName Id);
+
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
 		bool AddOne(FName Id);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		bool AddFull(FName Id);
+		void AddFull(FName Id);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		bool Add(FName Id, int32 Amount);
+		int32 Add(FName Id, int32 Amount);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
 		bool RemoveOne(FName Id);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		bool RemoveAll(FName Id);
+		void RemoveAll(FName Id);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		bool Remove(FName Id, int32 Amount);
+		int32 Remove(FName Id, int32 Amount);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		bool Transform(const FKnapsackInfo& Other, FName Id, int32 Amount);
+		void TransferOneFrom(UKnapsackInfo* Other, FName Id, int32 Amount);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		bool TransformOneAll(const FKnapsackInfo& Other, FName Id);
+		void TransferOneAllFrom(UKnapsackInfo* Other, FName Id);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		bool TransformAll(const FKnapsackInfo& Other, FName Id);
+		void TransferAllFrom(UKnapsackInfo* Other);
+
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+		void TransferOneTo(UKnapsackInfo* Other, FName Id, int32 Amount);
+
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+		void TransferOneAllTo(UKnapsackInfo* Other, FName Id);
+
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+		void TransferAllTo(UKnapsackInfo* Other);
+
+private:
+
+	TSet<FKnapsackItemInfo, TKnapsackItemInfoKeyFuncs> KnapsackItemInfoSet;
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////
+//END The Knapsack Item Information
+////////////////////////////////////////////////////////////////////////////////////////////
 /**
  *
  */
@@ -263,7 +351,11 @@ public:
 
 	}
 
-	static UKnapsackItemInventory* GetSingletonInstance() {
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInventory")
+		static bool ReadConfig(const FString JsonConfigPath, UDataTable* DataTable);
+
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInventory")
+		static UKnapsackItemInventory* GetSingletonInstance() {
 		if (SingletonInstance == nullptr)
 		{
 			SingletonInstance = NewObject<UKnapsackItemInventory>();
@@ -275,14 +367,16 @@ private:
 	static UKnapsackItemInventory* SingletonInstance;
 
 public:
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInventory")
+		/*Init DataTable*/
+		void Init(UDataTable* DataTable);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInventory")
-		static bool ReadConfig(const FString JsonConfigPath, UDataTable* DataTable);
+		/*Find Inventory Item Info By Id*/
+		bool FindInventoryItemInfoById(const FName Id, FInventoryItemInfo& Result);
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInventory")
-		FInventoryItemInfo* FindInventoryItemInfoById(const FName Id);
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CB_KnapsackItemInventory", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CB_KnapsackItemInventory", meta = (AllowPrivateAccess = "true"))
+		/*The meta data of  Inventory Item Info*/
 		UDataTable* DataTable;
 };
 UKnapsackItemInventory* UKnapsackItemInventory::SingletonInstance = nullptr;
