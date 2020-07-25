@@ -1,6 +1,7 @@
 #include "KnapsackItemInventory.h"
 #include "Datas.h"
 #include "Resources.h"
+
 FInventoryItemCompoundInfo::FInventoryItemCompoundInfo()
 {
 	Id = FName("Id");
@@ -29,36 +30,23 @@ FKnapsackItemInfo::FKnapsackItemInfo(FName Id) :FKnapsackItemInfo(Id, EKnapsackI
 FKnapsackItemInfo::FKnapsackItemInfo(FName Id, EKnapsackItemInfoInitialtion KnapsackItemInfoInit)
 {
 	UKnapsackItemInventory* KnapsackItemInventory = UKnapsackItemInventory::GetSingletonInstance();
-	if (KnapsackItemInventory)
+	FInventoryItemInfo FoundInventoryItemInfo;
+	KnapsackItemInventory->FindInventoryItemInfo(Id, FoundInventoryItemInfo);
+	this->Id = Id;
+	this->InventoryItemInfo = &FoundInventoryItemInfo;
+	switch (KnapsackItemInfoInit)
 	{
-		FInventoryItemInfo FoundInventoryItemInfo;
-		bool b = KnapsackItemInventory->FindInventoryItemInfoById(Id, FoundInventoryItemInfo);
-		if (b)
-		{
-			this->Id = Id;
-			this->InventoryItemInfo = &FoundInventoryItemInfo;
-			switch (KnapsackItemInfoInit)
-			{
-			case ZERO:
-				this->Amount = 0;
-				break;
-			case FULL:
-				this->Amount = FoundInventoryItemInfo.MaxAmount;
-				break;
-			default:
-				this->Amount = 1;
-				break;
-			}
-			this->TotalWeight = FoundInventoryItemInfo.Weight;
-		}
-		else
-		{
-			this->Id = Id;
-			this->InventoryItemInfo = &FoundInventoryItemInfo;
-			this->TotalWeight = 0;
-		}
+	case ZERO:
+		this->Amount = 0;
+		break;
+	case FULL:
+		this->Amount = FoundInventoryItemInfo.MaxAmount;
+		break;
+	default:
+		this->Amount = 1;
+		break;
 	}
-
+	this->TotalWeight = FoundInventoryItemInfo.Weight;
 }
 
 FInventoryItemInfo* FKnapsackItemInfo::Info()
@@ -173,6 +161,9 @@ bool UKnapsackItemInventory::ReadConfig(const FString JsonConfigPath, UDataTable
 UKnapsackInfo::UKnapsackInfo()
 {
 	KnapsackItemInfoSet = TSet<FKnapsackItemInfo, TKnapsackItemInfoKeyFuncs>();
+	MaxItemCount = 40;
+	MaxDurability = 100;
+	CurrentDurability = 100;
 }
 
 TArray<FName> UKnapsackInfo::Ids()
@@ -193,18 +184,32 @@ TArray<FInventoryItemInfo> UKnapsackInfo::Infos()
 	return Infos;
 }
 
-FInventoryItemInfo UKnapsackInfo::Info(FName Id)
+bool UKnapsackInfo::Info(FName Id, FInventoryItemInfo& result)
 {
+	UKnapsackItemInventory* KnapsackItemInventory = UKnapsackItemInventory::GetSingletonInstance();
+	if (!KnapsackItemInventory->IsExistInventoryItemInfo(Id)) {
+		return false;
+	}
 	FKnapsackItemInfo* KnapsackItemInfo = KnapsackItemInfoSet.Find(Id);
 	if (KnapsackItemInfo)
 	{
-		return FInventoryItemInfo(*KnapsackItemInfo->Info());
+		result = *KnapsackItemInfo->Info();
+		return true;
 	}
-	throw FString("Don't exit Id for") + Id.ToString();
+	return false;
+}
+
+int32 UKnapsackInfo::Count()
+{
+	return KnapsackItemInfoSet.Num();
 }
 
 bool UKnapsackInfo::Amount(FName Id, int32& Result)
 {
+	UKnapsackItemInventory* KnapsackItemInventory = UKnapsackItemInventory::GetSingletonInstance();
+	if (!KnapsackItemInventory->IsExistInventoryItemInfo(Id)) {
+		return false;
+	}
 	FKnapsackItemInfo* KnapsackItemInfo = KnapsackItemInfoSet.Find(Id);
 	if (KnapsackItemInfo)
 	{
@@ -216,6 +221,10 @@ bool UKnapsackInfo::Amount(FName Id, int32& Result)
 
 bool UKnapsackInfo::Weight(FName Id, float& Result)
 {
+	UKnapsackItemInventory* KnapsackItemInventory = UKnapsackItemInventory::GetSingletonInstance();
+	if (!KnapsackItemInventory->IsExistInventoryItemInfo(Id)) {
+		return false;
+	}
 	FKnapsackItemInfo* KnapsackItemInfo = KnapsackItemInfoSet.Find(Id);
 	if (KnapsackItemInfo)
 	{
@@ -225,7 +234,7 @@ bool UKnapsackInfo::Weight(FName Id, float& Result)
 	return false;
 }
 
-float UKnapsackInfo::TotalWeigth(FName Id)
+float UKnapsackInfo::TotalWeigth()
 {
 	float TotalWeight = 0.f;
 	float TempWeight = 0.f;
@@ -238,9 +247,16 @@ float UKnapsackInfo::TotalWeigth(FName Id)
 
 bool UKnapsackInfo::AddOne(FName Id)
 {
+	UKnapsackItemInventory* KnapsackItemInventory = UKnapsackItemInventory::GetSingletonInstance();
+	if (!KnapsackItemInventory->IsExistInventoryItemInfo(Id)) {
+		return false;
+	}
 	FKnapsackItemInfo* KnapsackItemInfo = KnapsackItemInfoSet.Find(Id);
 	if (KnapsackItemInfo == nullptr)
 	{
+		if (Count() >= MaxItemCount) {
+			return false;
+		}
 		KnapsackItemInfoSet.Add(FKnapsackItemInfo(Id));
 		return true;
 	}
@@ -250,42 +266,61 @@ bool UKnapsackInfo::AddOne(FName Id)
 	}
 }
 
-void UKnapsackInfo::AddFull(FName Id)
+bool UKnapsackInfo::AddFull(FName Id)
 {
+	UKnapsackItemInventory* KnapsackItemInventory = UKnapsackItemInventory::GetSingletonInstance();
+	if (!KnapsackItemInventory->IsExistInventoryItemInfo(Id)) {
+		return false;
+	}
 	FKnapsackItemInfo* KnapsackItemInfo = KnapsackItemInfoSet.Find(Id);
 	if (KnapsackItemInfo == nullptr)
 	{
+		if (Count() >= MaxItemCount) {
+			return false;
+		}
 		KnapsackItemInfoSet.Add(FKnapsackItemInfo(Id, EKnapsackItemInfoInitialtion::FULL));
+		return true;
 	}
 	else
 	{
 		KnapsackItemInfo->fill();
+		return true;
 	}
 }
 
-int32 UKnapsackInfo::Add(FName Id, int32 Amount)
+bool UKnapsackInfo::Add(FName Id, int32 Amount, int32& RealAddAmount)
 {
+	UKnapsackItemInventory* KnapsackItemInventory = UKnapsackItemInventory::GetSingletonInstance();
+	if (!KnapsackItemInventory->IsExistInventoryItemInfo(Id)) {
+		return false;
+	}
 	FKnapsackItemInfo* Value = KnapsackItemInfoSet.Find(Id);
 	if (Value == nullptr)
 	{
+		if (Count() >= MaxItemCount) {
+			return false;
+		}
 		FKnapsackItemInfo KnapsackItemInfo = FKnapsackItemInfo(Id);
-		int32 Result = KnapsackItemInfo.IncreaseAmount(Amount);
+		RealAddAmount = KnapsackItemInfo.IncreaseAmount(Amount);
 		KnapsackItemInfoSet.Add(KnapsackItemInfo);
-		return Result;
 	}
 	else
 	{
-		return Value->IncreaseAmount(Amount);
+		RealAddAmount = Value->IncreaseAmount(Amount);
 	}
+	return true;
 }
 
 bool UKnapsackInfo::RemoveOne(FName Id)
 {
+	UKnapsackItemInventory* KnapsackItemInventory = UKnapsackItemInventory::GetSingletonInstance();
+	if (!KnapsackItemInventory->IsExistInventoryItemInfo(Id)) {
+		return false;
+	}
 	FKnapsackItemInfo* Value = KnapsackItemInfoSet.Find(Id);
 	if (Value == nullptr)
 	{
-		KnapsackItemInfoSet.Add(FKnapsackItemInfo(Id, EKnapsackItemInfoInitialtion::ZERO));
-		return true;
+		return false;
 	}
 	else
 	{
@@ -293,42 +328,63 @@ bool UKnapsackInfo::RemoveOne(FName Id)
 	}
 }
 
-void UKnapsackInfo::RemoveAll(FName Id)
+bool UKnapsackInfo::RemoveAll(FName Id)
 {
+	UKnapsackItemInventory* KnapsackItemInventory = UKnapsackItemInventory::GetSingletonInstance();
+	if (!KnapsackItemInventory->IsExistInventoryItemInfo(Id)) {
+		return false;
+	}
 	FKnapsackItemInfo* Value = KnapsackItemInfoSet.Find(Id);
 	if (Value == nullptr)
 	{
-		KnapsackItemInfoSet.Add(FKnapsackItemInfo(Id, EKnapsackItemInfoInitialtion::ZERO));
+		return false;
 	}
 	else
 	{
-		return Value->clear();
+		Value->clear();
+		return true;
 	}
 }
 
-int32 UKnapsackInfo::Remove(FName Id, int32 Amount)
+bool UKnapsackInfo::Remove(FName Id, int32 Amount, int32& RealRemoveAmount)
 {
+	UKnapsackItemInventory* KnapsackItemInventory = UKnapsackItemInventory::GetSingletonInstance();
+	if (!KnapsackItemInventory->IsExistInventoryItemInfo(Id)) {
+		return false;
+	}
 	FKnapsackItemInfo* Value = KnapsackItemInfoSet.Find(Id);
 	if (Value == nullptr)
 	{
-		FKnapsackItemInfo KnapsackItemInfo = FKnapsackItemInfo(Id);
-		int32 Result = KnapsackItemInfo.IncreaseAmount(Amount);
-		KnapsackItemInfoSet.Add(*Value);
-		return Result;
+		RealRemoveAmount = 0;
+		return false;
 	}
 	else
 	{
-		return Value->DecreaseAmount(Amount);
+		RealRemoveAmount = Value->DecreaseAmount(Amount);
+		return true;
 	}
 }
 
 void UKnapsackInfo::TransferOneFrom(UKnapsackInfo* Other, FName Id, int32 Amount)
 {
-	int32 RealRemove = Other->Remove(Id, Amount);
-	int32 RealAdd = this->Add(Id, RealRemove);
-	if (RealAdd != RealRemove)
+	int32 RealRemove;
+	bool IsRmove = Other->Remove(Id, Amount, RealRemove);
+	if (IsRmove)
 	{
-		Other->Add(Id, RealRemove - RealAdd);
+		int32 RealAdd;
+		bool IsAdd = this->Add(Id, RealRemove, RealAdd);
+		if (IsAdd)
+		{
+			if (RealAdd != RealRemove)
+			{
+				int32 Diff;
+				Other->Add(Id, RealRemove - RealAdd, Diff);
+			}
+		}
+		else {
+			Other->Add(Id, Amount, RealRemove);
+		}
+
 	}
 }
 
@@ -338,10 +394,12 @@ void UKnapsackInfo::TransferOneAllFrom(UKnapsackInfo* Other, FName Id)
 	bool b = Other->Amount(Id, Amount);
 	if (b)
 	{
-		int32 RealAdd = this->Add(Id, Amount);
-		if (RealAdd != Amount)
+		int32 RealAdd;
+		bool Add = this->Add(Id, Amount, RealAdd);
+		if (Add)
 		{
-			Other->Remove(Id, RealAdd);
+			int32 Diff;
+			Other->Remove(Id, RealAdd, Diff);
 		}
 	}
 }
@@ -357,12 +415,19 @@ void UKnapsackInfo::TransferAllFrom(UKnapsackInfo* Other)
 
 void UKnapsackInfo::TransferOneTo(UKnapsackInfo* Other, FName Id, int32 Amount)
 {
-	int32 RealRemove = this->Remove(Id, Amount);
-	int32 RealAdd = Other->Add(Id, RealRemove);
-	if (RealAdd != RealRemove)
+	int32 RealRemove;
+	bool Remove = this->Remove(Id, Amount, RealRemove);
+	if (Remove)
 	{
-		this->Add(Id, RealRemove - RealAdd);
+		int32 RealAdd;
+		bool Add = Other->Add(Id, RealRemove, RealAdd);
+		if (Add && RealAdd != RealRemove)
+		{
+			int32 Diff;
+			this->Add(Id, RealRemove - RealAdd, Diff);
+		}
 	}
+
 }
 
 void UKnapsackInfo::TransferOneAllTo(UKnapsackInfo* Other, FName Id)
@@ -371,10 +436,12 @@ void UKnapsackInfo::TransferOneAllTo(UKnapsackInfo* Other, FName Id)
 	bool b = this->Amount(Id, Amount);
 	if (b)
 	{
-		int32 RealAdd = Other->Add(Id, Amount);
-		if (RealAdd != Amount)
+		int32 RealAdd;
+		bool Add = Other->Add(Id, Amount, RealAdd);
+		if (Add)
 		{
-			this->Remove(Id, RealAdd);
+			int32 Diff;
+			this->Remove(Id, RealAdd, Diff);
 		}
 	}
 }
@@ -388,12 +455,56 @@ void UKnapsackInfo::TransferAllTo(UKnapsackInfo* Other)
 	}
 }
 
+void UKnapsackInfo::IncreaseDurability(int32 Durability)
+{
+	if (Durability <= 0)
+	{
+		DecreaseDurability(-Durability);
+	}
+	else if (Durability >= MaxDurability)
+	{
+		CurrentDurability = MaxDurability;
+	}
+	else {
+		CurrentDurability = Durability;
+	}
+}
+
+void UKnapsackInfo::DecreaseDurability(int32 Durability)
+{
+	if (Durability <= 0)
+	{
+		IncreaseDurability(-Durability);
+	}
+	else if (Durability >= MaxDurability)
+	{
+		CurrentDurability = 0;
+	}
+	else {
+		CurrentDurability = Durability;
+	}
+}
+
+bool UKnapsackInfo::IsDamage()
+{
+	return CurrentDurability == 0;
+}
+
 void UKnapsackItemInventory::Init(UDataTable* InDataTable)
 {
 	this->DataTable = InDataTable;
 }
 
-bool UKnapsackItemInventory::FindInventoryItemInfoById(const FName Id, FInventoryItemInfo& Result)
+bool UKnapsackItemInventory::IsExistInventoryItemInfo(const FName Id)
+{
+	if (DataTable)
+	{
+		return DataTable->FindRow<FInventoryItemInfo>(Id, FString()) != nullptr;
+	}
+	return false;
+}
+
+void UKnapsackItemInventory::FindInventoryItemInfo(const FName Id, FInventoryItemInfo& Result)
 {
 	if (DataTable)
 	{
@@ -402,8 +513,6 @@ bool UKnapsackItemInventory::FindInventoryItemInfoById(const FName Id, FInventor
 		if (Value)
 		{
 			Result = *Value;
-			return true;
 		}
 	}
-	return false;
 }

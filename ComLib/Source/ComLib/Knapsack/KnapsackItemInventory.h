@@ -228,7 +228,6 @@ public:
 	FName Id;
 
 private:
-
 	FInventoryItemInfo* InventoryItemInfo;
 
 	int32 Amount;
@@ -266,7 +265,7 @@ struct TKnapsackItemInfoKeyFuncs :BaseKeyFuncs<FKnapsackItemInfo, FName> {
 /**
  * The Knapsack Info
  */
-UCLASS(BlueprintType)
+UCLASS(ClassGroup = (Knapsack))
 class COMLIB_API UKnapsackInfo : public UObject
 {
 	GENERATED_BODY()
@@ -275,41 +274,44 @@ public:
 
 	UKnapsackInfo();
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+	UFUNCTION(BlueprintPure, Category = "CB_KnapsackInfo")
 		TArray<FName> Ids();
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+	UFUNCTION(BlueprintPure, Category = "CB_KnapsackInfo")
 		TArray<FInventoryItemInfo> Infos();
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		FInventoryItemInfo Info(FName Id);
+	UFUNCTION(BlueprintPure, Category = "CB_KnapsackInfo")
+		bool Info(FName Id, FInventoryItemInfo& result);
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+	UFUNCTION(BlueprintPure, Category = "CB_KnapsackInfo")
+		int32 Count();
+
+	UFUNCTION(BlueprintPure, Category = "CB_KnapsackInfo")
 		bool Amount(FName Id, int32& Result);
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+	UFUNCTION(BlueprintPure, Category = "CB_KnapsackInfo")
 		bool Weight(FName Id, float& Result);
 
-	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		float TotalWeigth(FName Id);
+	UFUNCTION(BlueprintPure, Category = "CB_KnapsackInfo")
+		float TotalWeigth();
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
 		bool AddOne(FName Id);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		void AddFull(FName Id);
+		bool AddFull(FName Id);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		int32 Add(FName Id, int32 Amount);
+		bool Add(FName Id, int32 Amount, int32& RealAddAmount);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
 		bool RemoveOne(FName Id);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		void RemoveAll(FName Id);
+		bool RemoveAll(FName Id);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
-		int32 Remove(FName Id, int32 Amount);
+		bool Remove(FName Id, int32 Amount, int32& RealRemoveAmount);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
 		void TransferOneFrom(UKnapsackInfo* Other, FName Id, int32 Amount);
@@ -329,9 +331,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
 		void TransferAllTo(UKnapsackInfo* Other);
 
-private:
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+		void IncreaseDurability(int32 Durability);
 
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackInfo")
+		void DecreaseDurability(int32 Durability);
+
+	UFUNCTION(BlueprintPure, Category = "CB_KnapsackInfo")
+		bool IsDamage();
+
+	//背包属性设置
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CB_KnapsackInfo", meta = (ClampMin = "0", UIMin = "0"))
+		//最大存取物品数量
+		int32 MaxItemCount;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, AdvancedDisplay, Category = "CB_KnapsackInfo", meta = (ClampMin = "0", UIMin = "0"))
+		//耐久度
+		int32 MaxDurability;
+
+private:
 	TSet<FKnapsackItemInfo, TKnapsackItemInfoKeyFuncs> KnapsackItemInfoSet;
+	int32 CurrentDurability;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -372,8 +394,12 @@ public:
 		void Init(UDataTable* DataTable);
 
 	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInventory")
+		/*Is Exist Inventory Item Info*/
+		bool IsExistInventoryItemInfo(const FName Id);
+
+	UFUNCTION(BlueprintCallable, Category = "CB_KnapsackItemInventory")
 		/*Find Inventory Item Info By Id*/
-		bool FindInventoryItemInfoById(const FName Id, FInventoryItemInfo& Result);
+		void FindInventoryItemInfo(const FName Id, FInventoryItemInfo& Result);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CB_KnapsackItemInventory", meta = (AllowPrivateAccess = "true"))
 		/*The meta data of  Inventory Item Info*/
